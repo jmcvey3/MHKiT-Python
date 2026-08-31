@@ -392,6 +392,9 @@ class TimeBinner:
         n_samples = out.shape[-2]
         for i in range(n_samples):
             sample_slice = slice(i * step, i * step + int(n_bin))
+            if any(np.isnan(dat[sample_slice])):
+                warnings.warn("Skipped PSD window containing NaNs.")
+                continue
             freq, psd = signal.welch(
                 dat[sample_slice],
                 fs=fs,
@@ -488,6 +491,9 @@ class TimeBinner:
         n_samples = oshp[-2]
         for i in range(n_samples):
             sample_slice = slice(i * step, i * step + int(n_bin))
+            if any(np.isnan(dat1[sample_slice])) or any(np.isnan(dat2[sample_slice])):
+                warnings.warn("Skipped PSD window containing NaNs.")
+                continue
             freq, cpsd = signal.csd(
                 dat1[sample_slice],
                 dat2[sample_slice],
