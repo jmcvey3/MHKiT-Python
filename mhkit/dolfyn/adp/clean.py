@@ -119,7 +119,7 @@ def find_surface(*args, **kwargs):
     Deprecated function. Use `water_depth_from_amplitude` instead.
     """
     warnings.warn(
-        "The 'find_surface' function was renamed to 'water_depth_from_amplitude"
+        "The 'find_surface' function was renamed to 'water_depth_from_amplitude' "
         "and will be dropped in a future release.",
         DeprecationWarning,
     )
@@ -218,7 +218,7 @@ def find_surface_from_P(*args, **kwargs):
     Deprecated function. Use `water_depth_from_pressure` instead.
     """
     warnings.warn(
-        "The 'find_surface_from_P' function was renamed to 'water_depth_from_pressure"
+        "The 'find_surface_from_P' function was renamed to 'water_depth_from_pressure' "
         "and will be dropped in a future release.",
         DeprecationWarning,
     )
@@ -336,7 +336,7 @@ def nan_beyond_surface(*args, **kwargs):
     Deprecated function. Use `remove_surface_interference` instead.
     """
     warnings.warn(
-        "The 'nan_beyond_surface' function was renamed to 'remove_surface_interference"
+        "The 'nan_beyond_surface' function was renamed to 'remove_surface_interference' "
         "and will be dropped in a future release.",
         DeprecationWarning,
     )

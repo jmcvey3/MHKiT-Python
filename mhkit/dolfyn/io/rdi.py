@@ -327,7 +327,7 @@ class _RDIReader:
                 if clock[0, 0] < 100:
                     clock[0, :] += defs.century
                 try:
-                    dates = tmlib.date_to_epoch(
+                    dates = tmlib.datetime_to_epoch(
                         tmlib.datetime(
                             *clock[:6, 0], microsecond=int(float(clock[6, 0]) * 10000)
                         )

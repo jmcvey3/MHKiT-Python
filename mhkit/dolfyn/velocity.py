@@ -5,7 +5,7 @@ from .rotate.api import rotate2, set_declination, set_inst2head_rotmat
 from .io.api import save
 from ..utils.binning_tools.binner import Binner
 from ..utils.binning_tools.tools import convert_degrees
-from ..utils.time_utils import dt64_to_epoch, dt64_to_date
+from ..utils.time_utils import dt64_to_epoch, dt64_to_datetime
 
 
 @xr.register_dataset_accessor("velds")  # 'vel dataset'
@@ -179,7 +179,7 @@ class Velocity:
             time_string = "-->No Time Information!<--"
         else:
             tm = self[time][[0, -1]].values
-            dt = dt64_to_date(tm[0])[0]
+            dt = dt64_to_datetime(tm[0])[0]
             delta = (dt64_to_epoch(tm[-1]) - dt64_to_epoch(tm[0])) / (3600 * 24)  # days
             if delta > 1:
                 units = "days"

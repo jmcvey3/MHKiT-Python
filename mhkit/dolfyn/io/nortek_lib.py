@@ -142,7 +142,7 @@ def rd_time(strng):
         return year
 
     min, sec, day, hour, year, month = unpack("BBBBBB", strng[:6])
-    return time.date_to_epoch(
+    return time.datetime_to_epoch(
         datetime(
             _fullyear(_bcd2char(year)),
             _bcd2char(month),

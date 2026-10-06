@@ -847,7 +847,7 @@ def read_winriver2(rdr):
             if clock[0, 0] < 100:
                 clock[0, :] += century
             date = tmlib.datetime(*clock[:3, 0]) + time
-            ens.time_gps[k] = tmlib.date_to_epoch(date)[0]
+            ens.time_gps[k] = tmlib.datetime_to_epoch(date)[0]
             fd.seek(1, 1)
             ens.latitude_gps[k] = fd.read_f64(1)
             tcNS = fd.reads(1)  # 'N' or 'S'
@@ -993,7 +993,7 @@ def read_vmdas(rdr):
 
     # Last lat/lon position prior to current ADCP ping
     utc_time_last_fix = tmlib.timedelta(milliseconds=(int(fd.read_ui32(1) * 0.1)))
-    ens.time_gps[k] = tmlib.date_to_epoch(date_utc + utc_time_last_fix)[0]
+    ens.time_gps[k] = tmlib.datetime_to_epoch(date_utc + utc_time_last_fix)[0]
     ens.latitude_gps[k] = fd.read_i32(1) * rdr._cfac32
     ens.longitude_gps[k] = fd.read_i32(1) * rdr._cfac32
     # From VTG
@@ -1066,7 +1066,7 @@ def read_sentinelv_ping_setup(rdr, bb=False):
     fd.read_ui16(1)  # ensemble count
     clock = fd.read_ui8(8)
     clock[1] += century
-    cfg["deployment_start"] = tmlib.date_to_str(
+    cfg["deployment_start"] = tmlib.datetime_to_str(
         tmlib.datetime(*clock[1:7], microsecond=int(float(clock[7]) * 10000))
     )[0]
     if rdr._debug_level > -1:

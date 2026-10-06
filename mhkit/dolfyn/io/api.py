@@ -10,11 +10,11 @@ from .base import _create_dataset, _get_filetype
 from ..rotate.base import _set_coords
 from ...utils.time_utils import (
     matlab_to_datetime,
-    date_to_matlab,
-    date_to_dt64,
-    dt64_to_date,
-    date_to_epoch,
-    epoch_to_date,
+    datetime_to_matlab,
+    datetime_to_dt64,
+    dt64_to_datetime,
+    datetime_to_epoch,
+    epoch_to_datetime,
 )
 
 
@@ -303,15 +303,15 @@ def save_mat(ds, filename, datenum=True):
     t_data = [t for t in ds.data_vars if np.issubdtype(ds[t].dtype, np.datetime64)]
 
     if datenum:
-        func = date_to_matlab
+        func = datetime_to_matlab
     else:
-        func = date_to_epoch
+        func = datetime_to_epoch
 
     for ky in t_coords:
-        dt = func(dt64_to_date(ds[ky]))
+        dt = func(dt64_to_datetime(ds[ky]))
         ds = ds.assign_coords({ky: (ky, dt, ds[ky].attrs)})
     for ky in t_data:
-        dt = func(dt64_to_date(ds[ky]))
+        dt = func(dt64_to_datetime(ds[ky]))
         ds[ky].data = dt
 
     ds.attrs["time_coords"] = t_coords
@@ -403,17 +403,17 @@ def load_mat(filename, datenum=True):
     if datenum:
         func = matlab_to_datetime
     else:
-        func = epoch_to_date
+        func = epoch_to_datetime
 
     # Restore datnum to np.dt64
     if hasattr(ds, "time_coords"):
         for ky in ds.attrs["time_coords"]:
-            dt = date_to_dt64(func(ds[ky].values))
+            dt = datetime_to_dt64(func(ds[ky].values))
             ds = ds.assign_coords({ky: dt})
         ds.attrs.pop("time_coords")
     if hasattr(ds, "time_data_vars"):
         for ky in ds.attrs["time_data_vars"]:
-            dt = date_to_dt64(func(ds[ky].values))
+            dt = datetime_to_dt64(func(ds[ky].values))
             ds[ky].data = dt
         ds.attrs.pop("time_data_vars")
 

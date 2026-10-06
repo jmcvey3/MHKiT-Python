@@ -8,11 +8,12 @@ Functions:
 - excel_to_datetime: Converts Excel datenum format to Python datetime.
 """
 
-from typing import Union
-import datetime as dt
+import warnings
+from typing import Union, List
 from datetime import datetime, timedelta, timezone
-import pandas as pd
 import numpy as np
+import pandas as pd
+import xarray as xr
 
 # pylint: disable=unused-import
 from pecos.utils import index_to_datetime
@@ -47,8 +48,8 @@ def matlab_to_datetime(
     time = []
     # loop through dates and convert
     for i, t in enumerate(matlab_datenum):
-        day = dt.datetime.fromordinal(int(t))
-        dayfrac = dt.timedelta(days=t % 1) - dt.timedelta(days=366)
+        day = datetime.fromordinal(int(t))
+        dayfrac = timedelta(days=t % 1) - timedelta(days=366)
         time.append(day + dayfrac)
 
         # Datenum is precise down to 100 microseconds - add difference to round
@@ -63,7 +64,7 @@ def matlab_to_datetime(
     return time
 
 
-def date_to_matlab(dt):
+def datetime_to_matlab(dt: List[datetime]):
     """
     Convert list of datetime objects to MATLAB datenum
 
@@ -78,13 +79,13 @@ def date_to_matlab(dt):
       List of timestamps in MATLAB datnum format
     """
 
-    time = list()
-    for i in range(len(dt)):
-        mdn = dt[i] + timedelta(days=366)
-        frac_seconds = (
-            dt[i] - datetime(dt[i].year, dt[i].month, dt[i].day, 0, 0, 0)
-        ).seconds / (24 * 60 * 60)
-        frac_microseconds = dt[i].microsecond / (24 * 60 * 60 * 1000000)
+    time = []
+    for t in dt:
+        mdn = t + timedelta(days=366)
+        frac_seconds = (t - datetime(t.year, t.month, t.day, 0, 0, 0)).seconds / (
+            24 * 60 * 60
+        )
+        frac_microseconds = t.microsecond / (24 * 60 * 60 * 1000000)
         time.append(mdn.toordinal() + frac_seconds + frac_microseconds)
 
     return time
@@ -120,7 +121,7 @@ def excel_to_datetime(
     return time
 
 
-def epoch_to_dt64(ep_time):
+def epoch_to_dt64(ep_time: Union[np.ndarray, xr.DataArray, int]):
     """
     Convert from epoch time (seconds since 1/1/1970 00:00:00) to
     numpy.datetime64 array
@@ -142,7 +143,7 @@ def epoch_to_dt64(ep_time):
     return out
 
 
-def dt64_to_epoch(dt64):
+def dt64_to_epoch(dt64: Union[np.ndarray, xr.DataArray, np.datetime64]):
     """
     Convert numpy.datetime64 array to epoch time
     (seconds since 1/1/1970 00:00:00)
@@ -161,7 +162,7 @@ def dt64_to_epoch(dt64):
     return dt64.astype("datetime64[ns]").astype("float") / 1e9
 
 
-def date_to_dt64(dt):
+def datetime_to_dt64(dt: Union[np.ndarray, xr.DataArray, datetime]):
     """
     Convert numpy.datetime64 array to list of datetime objects
 
@@ -179,7 +180,7 @@ def date_to_dt64(dt):
     return np.array(dt).astype("datetime64[ns]")
 
 
-def dt64_to_date(dt64):
+def dt64_to_datetime(dt64: Union[np.ndarray, xr.DataArray, np.datetime64]):
     """
     Convert numpy.datetime64 array to list of datetime objects
 
@@ -194,10 +195,14 @@ def dt64_to_date(dt64):
       The converted datetime object
     """
 
-    return epoch_to_date(dt64_to_epoch(dt64))
+    return epoch_to_datetime(dt64_to_epoch(dt64))
 
 
-def epoch_to_date(ep_time, offset_hr=0, to_str=False):
+def epoch_to_datetime(
+    ep_time: Union[np.ndarray, xr.DataArray, int],
+    offset_hr: int = 0,
+    to_str: bool = False,
+):
     """
     Convert from epoch time (seconds since 1/1/1970 00:00:00) to a list
     of datetime objects
@@ -246,12 +251,14 @@ def epoch_to_date(ep_time, offset_hr=0, to_str=False):
         ]
 
     if to_str:
-        time = date_to_str(time)
+        time = datetime_to_str(time)
 
     return time
 
 
-def date_to_str(dt, format_str=None):
+def datetime_to_str(
+    dt: Union[np.ndarray, xr.DataArray, datetime], format_str: Union[None, str] = None
+):
     """
     Convert list of datetime objects to legible strings
 
@@ -278,7 +285,7 @@ def date_to_str(dt, format_str=None):
     return [t.strftime(format_str) for t in dt]
 
 
-def date_to_epoch(dt):
+def datetime_to_epoch(dt: Union[np.ndarray, xr.DataArray, int]):
     """
     Convert list of datetime objects to epoch time
 
@@ -299,7 +306,9 @@ def date_to_epoch(dt):
     return [t.replace(tzinfo=timezone.utc).timestamp() for t in dt]
 
 
-def _fill_time_gaps(epoch, sample_rate_hz):
+def _fill_time_gaps(
+    epoch: Union[np.ndarray, xr.DataArray, list, int, float], sample_rate_hz: float
+):
     """
     Fill gaps (NaN values) in the timeseries by simple linear
     interpolation.  The ends are extrapolated by stepping
@@ -320,3 +329,112 @@ def _fill_time_gaps(epoch, sample_rate_hz):
         epoch[(ie + 1) :] = epoch[ie] + delta
 
     return epoch
+
+
+## Function deprecations
+def matlab2date(*args, **kwargs):
+    """
+    Deprecated function. Use `matlab_to_datetime` instead.
+    """
+    warnings.warn(
+        "The 'matlab2date' function was renamed to 'matlab_to_datetime' "
+        "and will be dropped in a future release.",
+        DeprecationWarning,
+    )
+    return matlab_to_datetime(*args, **kwargs)
+
+
+def date2matlab(*args, **kwargs):
+    """
+    Deprecated function. Use `datetime_to_matlab` instead.
+    """
+    warnings.warn(
+        "The 'date2matlab' function was renamed to 'datetime_to_matlab' "
+        "and will be dropped in a future release.",
+        DeprecationWarning,
+    )
+    return matlab_to_datetime(*args, **kwargs)
+
+
+def epoch2dt64(*args, **kwargs):
+    """
+    Deprecated function. Use `epoch_to_dt64` instead.
+    """
+    warnings.warn(
+        "The 'epoch2dt64' function was renamed to 'epoch_to_dt64' "
+        "and will be dropped in a future release.",
+        DeprecationWarning,
+    )
+    return epoch_to_dt64(*args, **kwargs)
+
+
+def dt642epoch(*args, **kwargs):
+    """
+    Deprecated function. Use `dt64_to_epoch` instead.
+    """
+    warnings.warn(
+        "The 'dt642epoch' function was renamed to 'dt64_to_epoch' "
+        "and will be dropped in a future release.",
+        DeprecationWarning,
+    )
+    return dt64_to_epoch(*args, **kwargs)
+
+
+def date2dt64(*args, **kwargs):
+    """
+    Deprecated function. Use `datetime_to_dt64` instead.
+    """
+    warnings.warn(
+        "The 'date2dt64' function was renamed to 'datetime_to_dt64' "
+        "and will be dropped in a future release.",
+        DeprecationWarning,
+    )
+    return datetime_to_dt64(*args, **kwargs)
+
+
+def dt642date(*args, **kwargs):
+    """
+    Deprecated function. Use `dt64_to_datetime` instead.
+    """
+    warnings.warn(
+        "The 'dt642date' function was renamed to 'dt64_to_datetime' "
+        "and will be dropped in a future release.",
+        DeprecationWarning,
+    )
+    return dt64_to_datetime(*args, **kwargs)
+
+
+def epoch2date(*args, **kwargs):
+    """
+    Deprecated function. Use `epoch_to_datetime` instead.
+    """
+    warnings.warn(
+        "The 'epoch2date' function was renamed to 'epoch_to_datetime' "
+        "and will be dropped in a future release.",
+        DeprecationWarning,
+    )
+    return epoch_to_datetime(*args, **kwargs)
+
+
+def date2str(*args, **kwargs):
+    """
+    Deprecated function. Use `datetime_to_str` instead.
+    """
+    warnings.warn(
+        "The 'date2str' function was renamed to 'datetime_to_str' "
+        "and will be dropped in a future release.",
+        DeprecationWarning,
+    )
+    return datetime_to_str(*args, **kwargs)
+
+
+def date2epoch(*args, **kwargs):
+    """
+    Deprecated function. Use `datetime_to_epoch` instead.
+    """
+    warnings.warn(
+        "The 'dt642epoch' function was renamed to 'datetime_to_epoch' "
+        "and will be dropped in a future release.",
+        DeprecationWarning,
+    )
+    return datetime_to_epoch(*args, **kwargs)
