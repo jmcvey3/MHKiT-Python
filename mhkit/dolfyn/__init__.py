@@ -9,7 +9,7 @@ from .rotate.base import euler2orient, orient2euler, quaternion2orient
 from .velocity import VelBinner
 from mhkit.dolfyn import adv
 from mhkit.dolfyn import adp
-from mhkit.dolfyn import time
 from mhkit.dolfyn import io
 from mhkit.dolfyn import rotate
-from mhkit.dolfyn import tools
+from mhkit.utils.binning_tools import tools
+from mhkit.utils import time_utils as time

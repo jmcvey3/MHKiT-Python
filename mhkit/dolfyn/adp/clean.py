@@ -5,7 +5,8 @@ from typing import Optional
 import numpy as np
 import xarray as xr
 from scipy.signal import medfilt
-from ..tools import medfiltnan
+
+from ...utils.binning_tools.tools import medfiltnan
 from ..rotate.api import rotate2
 from ..rotate.base import quaternion2orient
 

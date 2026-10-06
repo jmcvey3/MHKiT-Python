@@ -1,9 +1,9 @@
-from .vector import _earth2principal, _euler2orient
-from .base import _beam2inst
-from . import base as rotb
-import numpy as np
 import warnings
+import numpy as np
 from numpy.linalg import inv
+
+from .base import _beam2inst, _check_rotate_vars, _check_rotmat_det, _set_coords
+from .vector import _earth2principal, _euler2orient
 
 
 def _inst2earth(adcpo, reverse=False, rotate_vars=None, force=False):
@@ -43,7 +43,7 @@ def _inst2earth(adcpo, reverse=False, rotate_vars=None, force=False):
     else:  # orientation = 'up' or 'AHRS'
         down = False
 
-    rotate_vars = rotb._check_rotate_vars(adcpo, rotate_vars)
+    rotate_vars = _check_rotate_vars(adcpo, rotate_vars)
 
     cs = adcpo.coord_sys.lower()
     if not force:
@@ -78,7 +78,7 @@ def _inst2earth(adcpo, reverse=False, rotate_vars=None, force=False):
     # matrix.
     rmat = np.rollaxis(omat.data, 1)
 
-    _dcheck = rotb._check_rotmat_det(rmat)
+    _dcheck = _check_rotmat_det(rmat)
     if not _dcheck.all():
         warnings.warn(
             "Invalid orientation matrix (determinant != 1) at indices: {}. "
@@ -149,6 +149,6 @@ def _inst2earth(adcpo, reverse=False, rotate_vars=None, force=False):
                 )
         adcpo[nm].values = dat.copy()
 
-    adcpo = rotb._set_coords(adcpo, cs_new)
+    adcpo = _set_coords(adcpo, cs_new)
 
     return adcpo

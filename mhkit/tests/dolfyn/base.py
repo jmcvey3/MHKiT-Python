@@ -1,5 +1,5 @@
 import mhkit.dolfyn.io.api as io
-from mhkit.dolfyn import time
+from mhkit.utils import time_utils as time
 from xarray.testing import assert_allclose as _assert_allclose
 from os.path import abspath, dirname, join, normpath, relpath
 import numpy as np
@@ -24,15 +24,15 @@ def assert_allclose(dat0, dat1, *args, **kwargs):
     names = []
     for v in dat0.variables:
         if v in dat1.variables and np.issubdtype(dat0[v].dtype, np.datetime64):
-            dat0[v] = time.dt642epoch(dat0[v])
-            dat1[v] = time.dt642epoch(dat1[v])
+            dat0[v] = time.dt64_to_epoch(dat0[v])
+            dat1[v] = time.dt64_to_epoch(dat1[v])
             names.append(v)
     # Check coords and data_vars
     _assert_allclose(dat0, dat1, *args, **kwargs)
     # If test debugging
     for v in names:
-        dat0[v] = time.epoch2dt64(dat0[v])
-        dat1[v] = time.epoch2dt64(dat1[v])
+        dat0[v] = time.epoch_to_dt64(dat0[v])
+        dat1[v] = time.epoch_to_dt64(dat1[v])
 
     # Check attributes
     mismatch = []

@@ -1,3 +1,7 @@
+import os
+import unittest
+import pytest
+
 from . import test_read_adp as tp
 from . import test_read_adv as tv
 from mhkit.tests.dolfyn.base import (
@@ -12,9 +16,6 @@ import mhkit.dolfyn.io.rdi as wh
 import mhkit.dolfyn.io.nortek as awac
 import mhkit.dolfyn.io.nortek2 as sig
 from mhkit.dolfyn.io.api import read_example as read
-import unittest
-import pytest
-import os
 
 make_data = False
 

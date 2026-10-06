@@ -1,9 +1,10 @@
+import unittest
+import numpy as np
+from numpy.testing import assert_allclose
+
 from .base import load_netcdf as load
 from mhkit.dolfyn.rotate.base import euler2orient, orient2euler, quaternion2orient
 from mhkit.dolfyn.rotate.api import set_declination
-import numpy as np
-from numpy.testing import assert_allclose
-import unittest
 
 
 def check_hpr(h, p, r, omatin):

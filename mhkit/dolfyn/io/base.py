@@ -1,8 +1,8 @@
+import os
+import json
+import warnings
 import numpy as np
 import xarray as xr
-import json
-import os
-import warnings
 
 
 def _abspath(fname):

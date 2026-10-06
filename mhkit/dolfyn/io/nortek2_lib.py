@@ -4,8 +4,8 @@ from os import path
 from logging import getLogger
 import numpy as np
 
-from .. import time
 from .base import _abspath
+from ...utils import time_utils as time
 
 
 def _reduce_by_average(data, ky0, ky1):
@@ -98,7 +98,7 @@ def _calc_time(year, month, day, hour, minute, second, usec, zero_is_bad=True):
             continue
         try:
             # Note that month is zero-based, seconds since Jan 1 1970
-            dt[idx] = time.date2epoch(time.datetime(y, mo + 1, d, h, mi, s, u))[0]
+            dt[idx] = time.date_to_epoch(time.datetime(y, mo + 1, d, h, mi, s, u))[0]
         except ValueError:
             # One of the time values is out-of-range (e.g., mi > 60)
             # This probably indicates a corrupted byte, so we just insert None.

@@ -1,9 +1,10 @@
-import numpy as np
-from ..velocity import VelBinner
 import warnings
-from ..tools import slice1d_along_axis, _nans_like
-from scipy.special import cbrt
+import numpy as np
 import xarray as xr
+from scipy.special import cbrt
+
+from ..velocity import VelBinner
+from ...utils.binning_tools.tools import slice1d_along_axis, _nans_like
 
 
 class ADVBinner(VelBinner):
@@ -86,123 +87,6 @@ class ADVBinner(VelBinner):
         da = da.assign_coords({"tau": self.tau, "time": time})
 
         return da
-
-    def cross_spectral_density(
-        self,
-        veldat,
-        freq_units="rad/s",
-        fs=None,
-        window="hann",
-        n_bin=None,
-        n_fft_coh=None,
-        pct_overlap=0,
-    ):
-        """
-        Calculate the cross-spectral density of velocity components.
-
-        Parameters
-        ----------
-        veldat : xarray.DataArray
-          The raw 3D velocity data.
-        freq_units : string
-          Frequency units of the returned spectra in either Hz or rad/s
-          (`f` or :math:`\\omega`)
-        fs : float (optional)
-          The sample rate. Default = `self.fs`
-        window: str
-          Type of window to apply to each FFT segment.
-          Example options: 'boxcar', 'hann', 'hamming', 'blackman', 'bartlett'.
-          See `scipy.signal.window` for more options.
-          Default: 'hann'.
-        n_bin : int (optional)
-          The bin-size. Default = `self.n_bin`
-        n_fft_coh : int (optional)
-          The fft size. Default = `self.n_fft_coh`
-        pct_overlap : float (optional)
-          Fractional overlap between consecutive sliding windows, in [0, 1).
-          Controls both the bin-to-bin advance and the within-bin FFT overlap
-          passed to scipy.signal.welch. Industry standard is 50%.
-          Default = 0 (0% overlap).
-
-        Returns
-        -------
-        csd : xarray.DataArray (3, M, N_FFT)
-          The first-dimension of the cross-spectrum is the three
-          different cross-spectra: :math:`uv`, :math:`uw`, :math:`vw`.
-        """
-
-        if not isinstance(veldat, xr.DataArray):
-            raise TypeError("`veldat` must be an instance of `xarray.DataArray`.")
-        if ("rad" not in freq_units) and ("Hz" not in freq_units):
-            raise ValueError("`freq_units` should be one of 'Hz' or 'rad/s'")
-        if (pct_overlap < 0) or (pct_overlap > 1):
-            raise ValueError(
-                f"pct_overlap must be between 0 and 1, received {pct_overlap}."
-            )
-
-        fs_in = self._parse_fs(fs)
-        n_bin = self._parse_nbin(n_bin)
-        n_fft = self._parse_nfft_coh(n_fft_coh)
-        step = int((1 - pct_overlap) * n_bin)
-
-        # Get time coord before changing veldat from xarray to numpy array
-        time_coord = self.mean(veldat["time"].values, step=step, n_bin=n_bin)
-        veldat = veldat.values
-        if len(np.shape(veldat)) != 2:
-            raise Exception(
-                "This function is only valid for calculating TKE using "
-                "the 3D velocity vector from an ADV."
-            )
-
-        out = np.empty(
-            self._outshape_fft(veldat[:3].shape, n_fft=n_fft, n_bin=n_bin, step=step),
-            dtype="complex",
-        )
-
-        # Create frequency vector, also checks whether using f or omega
-        if "rad" in freq_units:
-            fs = 2 * np.pi * fs_in
-            freq_units = "rad s-1"
-            units = "m2 s-1 rad-1"
-        else:
-            fs = fs_in
-            freq_units = "Hz"
-            units = "m2 s-2 Hz-1"
-
-        for ip, ipair in enumerate(self._cross_pairs):
-            f, out[ip] = self._csd_base(
-                veldat[ipair[0]],
-                veldat[ipair[1]],
-                fs=fs,
-                window=window,
-                n_bin=n_bin,
-                n_fft=n_fft,
-                pct_overlap=pct_overlap,
-            )
-        coh_freq = xr.DataArray(
-            f,
-            dims=["coh_freq"],
-            name="coh_freq",
-            attrs={
-                "units": freq_units,
-                "long_name": "FFT Frequency Vector",
-                "coverage_content_type": "coordinate",
-            },
-        )
-
-        csd = xr.DataArray(
-            out.astype("complex64"),
-            coords={"C": self.C, "time_psd": time_coord, "coh_freq": coh_freq},
-            dims=["C", "time_psd", "coh_freq"],
-            attrs={
-                "units": units,
-                "n_fft_coh": n_fft,
-                "long_name": "Cross Spectral Density",
-            },
-        )
-        csd["coh_freq"].attrs["units"] = freq_units
-
-        return csd
 
     def doppler_noise_level(self, psd, pct_fN=0.8):
         """

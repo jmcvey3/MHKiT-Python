@@ -1,6 +1,5 @@
-from .base import load_netcdf as load, rfnm
 import unittest
-
+from .base import load_netcdf as load, rfnm
 
 make_data = False
 vec = load("vector_data01.nc")

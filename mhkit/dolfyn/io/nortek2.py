@@ -11,7 +11,7 @@ from .base import _find_userdata, _create_dataset, _abspath
 from ..rotate.vector import _euler2orient
 from ..rotate.base import _set_coords
 from ..rotate.api import set_declination
-from ..time import epoch2dt64, _fill_time_gaps
+from ...utils.time_utils import epoch_to_dt64, _fill_time_gaps
 
 
 def read_signature(
@@ -100,7 +100,7 @@ def read_signature(
                 "look for 0 values in 'status{}'".format(ky, tag)
             )
             tdat = _fill_time_gaps(tdat, sample_rate_hz=out["attrs"]["fs"])
-        coords[ky] = epoch2dt64(tdat).astype("datetime64[ns]")
+        coords[ky] = epoch_to_dt64(tdat).astype("datetime64[ns]")
 
     declin = None
     for nm in userdata:

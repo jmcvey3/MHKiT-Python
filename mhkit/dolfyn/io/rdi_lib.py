@@ -1,6 +1,6 @@
-import numpy as np
 from struct import unpack
 from os.path import expanduser
+import numpy as np
 
 from .rdi_defs import data_defs
 

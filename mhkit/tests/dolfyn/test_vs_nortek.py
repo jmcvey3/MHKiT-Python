@@ -1,15 +1,15 @@
+import unittest
+import numpy as np
+from numpy.testing import assert_allclose
+import scipy.io as sio
+
 from . import test_read_adp as tr
 from . import base
 from mhkit.dolfyn.rotate.api import rotate2
-from numpy.testing import assert_allclose
-import numpy as np
-import scipy.io as sio
-import unittest
 
 """
 Testing against velocity and bottom-track velocity data in Nortek mat files
 exported from Nortek SignatureDeployment software.
-
 """
 
 

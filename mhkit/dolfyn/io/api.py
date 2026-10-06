@@ -1,19 +1,20 @@
-import numpy as np
-import scipy.io as sio
-import xarray as xr
 from os.path import abspath, dirname, join, normpath, relpath
+import numpy as np
+import xarray as xr
+import scipy.io as sio
+
 from .nortek import read_nortek
 from .nortek2 import read_signature
 from .rdi import read_rdi
 from .base import _create_dataset, _get_filetype
 from ..rotate.base import _set_coords
-from ..time import (
-    date2matlab,
-    matlab2date,
-    date2dt64,
-    dt642date,
-    date2epoch,
-    epoch2date,
+from ...utils.time_utils import (
+    matlab_to_datetime,
+    date_to_matlab,
+    date_to_dt64,
+    dt64_to_date,
+    date_to_epoch,
+    epoch_to_date,
 )
 
 
@@ -302,15 +303,15 @@ def save_mat(ds, filename, datenum=True):
     t_data = [t for t in ds.data_vars if np.issubdtype(ds[t].dtype, np.datetime64)]
 
     if datenum:
-        func = date2matlab
+        func = date_to_matlab
     else:
-        func = date2epoch
+        func = date_to_epoch
 
     for ky in t_coords:
-        dt = func(dt642date(ds[ky]))
+        dt = func(dt64_to_date(ds[ky]))
         ds = ds.assign_coords({ky: (ky, dt, ds[ky].attrs)})
     for ky in t_data:
-        dt = func(dt642date(ds[ky]))
+        dt = func(dt64_to_date(ds[ky]))
         ds[ky].data = dt
 
     ds.attrs["time_coords"] = t_coords
@@ -400,19 +401,19 @@ def load_mat(filename, datenum=True):
             ds.attrs[nm] = [ds.attrs[nm]]
 
     if datenum:
-        func = matlab2date
+        func = matlab_to_datetime
     else:
-        func = epoch2date
+        func = epoch_to_date
 
     # Restore datnum to np.dt64
     if hasattr(ds, "time_coords"):
         for ky in ds.attrs["time_coords"]:
-            dt = date2dt64(func(ds[ky].values))
+            dt = date_to_dt64(func(ds[ky].values))
             ds = ds.assign_coords({ky: dt})
         ds.attrs.pop("time_coords")
     if hasattr(ds, "time_data_vars"):
         for ky in ds.attrs["time_data_vars"]:
-            dt = date2dt64(func(ds[ky].values))
+            dt = date_to_dt64(func(ds[ky].values))
             ds[ky].data = dt
         ds.attrs.pop("time_data_vars")
 

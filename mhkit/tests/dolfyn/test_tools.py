@@ -1,7 +1,8 @@
-import mhkit.dolfyn.tools as tools
-from numpy.testing import assert_equal, assert_allclose
-import numpy as np
 import unittest
+import numpy as np
+from numpy.testing import assert_equal, assert_allclose
+
+import mhkit.utils.binning_tools.tools as tools
 
 
 class tools_testcase(unittest.TestCase):

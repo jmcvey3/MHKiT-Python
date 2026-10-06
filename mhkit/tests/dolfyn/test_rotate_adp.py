@@ -1,9 +1,10 @@
+import unittest
+import numpy as np
+import numpy.testing as npt
+
 from . import test_read_adp as tr
 from .base import load_netcdf as load, save_netcdf as save, assert_allclose
 from mhkit.dolfyn.rotate.api import rotate2, calc_principal_heading
-import numpy as np
-import numpy.testing as npt
-import unittest
 
 make_data = False
 

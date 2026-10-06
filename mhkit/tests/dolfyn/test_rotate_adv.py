@@ -1,3 +1,7 @@
+import unittest
+import numpy as np
+import numpy.testing as npt
+
 from . import test_read_adv as tr
 from .base import load_netcdf as load, save_netcdf as save, assert_allclose
 from mhkit.dolfyn.rotate.api import (
@@ -7,9 +11,6 @@ from mhkit.dolfyn.rotate.api import (
     set_inst2head_rotmat,
 )
 from mhkit.dolfyn.rotate.base import euler2orient, orient2euler
-import numpy as np
-import numpy.testing as npt
-import unittest
 
 make_data = False
 

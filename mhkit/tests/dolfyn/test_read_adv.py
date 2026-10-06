@@ -1,9 +1,9 @@
+import unittest
+import numpy as np
+
 from mhkit.tests.dolfyn import base as tb
 from mhkit.dolfyn.rotate.api import set_inst2head_rotmat
 from mhkit.dolfyn.io.api import read_example as read
-import numpy as np
-import unittest
-import pytest
 
 make_data = False
 load = tb.load_netcdf

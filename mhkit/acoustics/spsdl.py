@@ -18,7 +18,7 @@ from typing import Union, Dict, Tuple, Optional
 import numpy as np
 import xarray as xr
 
-from mhkit.dolfyn.time import epoch2dt64, dt642epoch
+from mhkit.utils.time_utils import epoch_to_dt64, dt64_to_epoch
 from .analysis import _check_numeric, _fmax_warning, create_frequency_bands
 
 
@@ -350,8 +350,8 @@ def time_aggregate(
     )
     time_bins_upper = time_bins_lower + window
     time_bins = np.append(time_bins_lower, time_bins_upper[-1])
-    center_time = epoch2dt64(
-        0.5 * (dt642epoch(time_bins_lower) + dt642epoch(time_bins_upper))
+    center_time = epoch_to_dt64(
+        0.5 * (dt64_to_epoch(time_bins_lower) + dt64_to_epoch(time_bins_upper))
     )
 
     # Use xarray binning methods

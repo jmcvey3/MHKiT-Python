@@ -1,10 +1,11 @@
+import unittest
+from datetime import datetime
+import numpy as np
+from numpy.testing import assert_equal, assert_allclose
+
 from . import test_read_adv as trv
 from . import test_read_adp as trp
-import mhkit.dolfyn.time as time
-from numpy.testing import assert_equal, assert_allclose
-import numpy as np
-from datetime import datetime
-import unittest
+import mhkit.utils.time_utils as time
 
 
 class time_testcase(unittest.TestCase):
@@ -12,10 +13,10 @@ class time_testcase(unittest.TestCase):
         td = trv.dat_imu.copy(deep=True)
         dat_sig = trp.dat_sig_i.copy(deep=True)
 
-        dt = time.dt642date(td.time)
-        dt1 = time.dt642date(td.time[0])
-        dt_off = time.epoch2date(time.dt642epoch(td.time), offset_hr=-7)
-        t_str = time.epoch2date(time.dt642epoch(td.time), to_str=True)
+        dt = time.dt64_to_date(td.time)
+        dt1 = time.dt64_to_date(td.time[0])
+        dt_off = time.epoch_to_date(time.dt64_to_epoch(td.time), offset_hr=-7)
+        t_str = time.epoch_to_date(time.dt64_to_epoch(td.time), to_str=True)
 
         assert_equal(dt[0], datetime(2012, 6, 12, 12, 0, 2, 687283))
         assert_equal(dt1, [datetime(2012, 6, 12, 12, 0, 2, 687283)])
@@ -24,28 +25,29 @@ class time_testcase(unittest.TestCase):
 
         # Validated based on data in ad2cp.index file
         assert_equal(
-            time.dt642date(dat_sig.time[0])[0], datetime(2017, 7, 24, 17, 0, 0, 63500)
+            time.dt64_to_date(dat_sig.time[0])[0],
+            datetime(2017, 7, 24, 17, 0, 0, 63500),
         )
         # This should always be true
-        assert_equal(time.epoch2date([0])[0], datetime(1970, 1, 1, 0, 0))
+        assert_equal(time.epoch_to_date([0])[0], datetime(1970, 1, 1, 0, 0))
 
     def test_datetime(self):
         td = trv.dat_imu.copy(deep=True)
 
-        dt = time.dt642date(td.time)
-        epoch = np.array(time.date2epoch(dt))
+        dt = time.dt64_to_date(td.time)
+        epoch = np.array(time.date_to_epoch(dt))
 
-        assert_allclose(time.dt642epoch(td.time.values), epoch, atol=1e-7)
+        assert_allclose(time.dt64_to_epoch(td.time.values), epoch, atol=1e-7)
 
     def test_datenum(self):
         td = trv.dat_imu.copy(deep=True)
 
-        dt = time.dt642date(td.time)
-        dn = time.date2matlab(dt)
-        dt2 = time.matlab2date(dn)
-        epoch = np.array(time.date2epoch(dt2))
+        dt = time.dt64_to_date(td.time)
+        dn = time.date_to_matlab(dt)
+        dt2 = time.matlab_to_datetime(dn, to_pandas=False)
+        epoch = np.array(time.date_to_epoch(dt2))
 
-        assert_allclose(time.dt642epoch(td.time.values), epoch, atol=1e-6)
+        assert_allclose(time.dt64_to_epoch(td.time.values), epoch, atol=1e-6)
         assert_equal(dn[0], 735032.5000311028)
 
 

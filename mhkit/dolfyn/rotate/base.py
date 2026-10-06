@@ -1,8 +1,8 @@
+import warnings
 import numpy as np
 import xarray as xr
 from numpy.linalg import det, inv
 from scipy.spatial.transform import Rotation as R
-import warnings
 
 
 def _make_model(ds):

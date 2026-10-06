@@ -1,11 +1,13 @@
+import warnings
+import numpy as np
+import xarray as xr
+
+from .base import _make_model
+
 from . import vector as r_vec
 from . import awac as r_awac
 from . import signature as r_sig
 from . import rdi as r_rdi
-from .base import _make_model
-import numpy as np
-import xarray as xr
-import warnings
 
 # The 'rotation chain'
 rc = ["beam", "inst", "earth", "principal"]

@@ -59,7 +59,7 @@ import warnings
 import numpy as np
 import xarray as xr
 
-from mhkit.dolfyn import VelBinner
+from mhkit.utils.binning_tools.binner import Binner
 
 
 def _check_numeric(value, name: str):
@@ -246,8 +246,8 @@ def sound_pressure_spectral_density(
     else:
         nfft = nbin
 
-    # Use dolfyn PSD functionality
-    binner = VelBinner(fs=fs, n_bin=nbin, n_fft=nfft)
+    # PSD functionality
+    binner = Binner(fs=fs, n_bin=nbin, n_fft=nfft)
     # Sound pressure spectral densities with 50% overlap between FFT windows
     psd = binner.power_spectral_density(
         pressure, freq_units="Hz", window="hann", pct_overlap=pct_overlap

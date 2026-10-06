@@ -7,7 +7,6 @@ import unittest
 import json
 import xarray as xr
 
-
 testdir = dirname(abspath(__file__))
 loads_datadir = normpath(join(testdir, relpath("../../../examples/data/loads")))
 

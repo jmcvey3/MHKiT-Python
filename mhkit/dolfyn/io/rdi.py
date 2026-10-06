@@ -1,17 +1,17 @@
-import numpy as np
-import xarray as xr
-import warnings
 from os.path import getsize
 from pathlib import Path
+import warnings
 import logging
+import numpy as np
+import xarray as xr
 
 from . import base
-from .. import time as tmlib
 from . import rdi_lib as lib
 from . import rdi_defs as defs
 from ..rotate.rdi import _calc_beam_orientmat, _calc_orientmat
 from ..rotate.base import _set_coords
 from ..rotate.api import set_declination
+from ...utils import time_utils as tmlib
 
 
 def read_rdi(
@@ -94,12 +94,12 @@ def read_rdi(
         # Convert time coords to dt64
         t_coords = [t for t in dat["coords"] if "time" in t]
         for ky in t_coords:
-            dat["coords"][ky] = tmlib.epoch2dt64(dat["coords"][ky])
+            dat["coords"][ky] = tmlib.epoch_to_dt64(dat["coords"][ky])
 
         # Convert time vars to dt64
         t_data = [t for t in dat["data_vars"] if "time" in t]
         for ky in t_data:
-            dat["data_vars"][ky] = tmlib.epoch2dt64(dat["data_vars"][ky])
+            dat["data_vars"][ky] = tmlib.epoch_to_dt64(dat["data_vars"][ky])
 
         # Create xarray dataset from upper level dictionary
         ds = base._create_dataset(dat)
@@ -327,7 +327,7 @@ class _RDIReader:
                 if clock[0, 0] < 100:
                     clock[0, :] += defs.century
                 try:
-                    dates = tmlib.date2epoch(
+                    dates = tmlib.date_to_epoch(
                         tmlib.datetime(
                             *clock[:6, 0], microsecond=int(float(clock[6, 0]) * 10000)
                         )

@@ -1,17 +1,17 @@
+from struct import unpack
+from pathlib import Path
 import warnings
 import logging
 import numpy as np
-from struct import unpack
-from pathlib import Path
 
-from .. import time
 from . import base
 from . import nortek_defs as defs
 from . import nortek_lib as lib
-from .. import tools as tbx
+from ...utils.binning_tools import tools as tbx
 from ..rotate.vector import _calc_omat
 from ..rotate.base import _set_coords
 from ..rotate import api as rot
+from ...utils import time_utils as time
 
 
 def read_nortek(
@@ -78,7 +78,7 @@ def read_nortek(
                 "look for 0 values in 'status{}'".format(ky, tag)
             )
             tdat = time._fill_time_gaps(tdat, sample_rate_hz=dat["attrs"]["fs"])
-        coords[ky] = time.epoch2dt64(tdat).astype("datetime64[ns]")
+        coords[ky] = time.epoch_to_dt64(tdat).astype("datetime64[ns]")
 
     # Apply rotation matrix and declination
     rotmat = None

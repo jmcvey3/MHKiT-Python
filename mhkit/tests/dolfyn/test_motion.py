@@ -1,6 +1,6 @@
+import unittest
 import numpy as np
 import xarray as xr
-from mhkit.dolfyn.adv.motion import correct_motion
 
 from . import test_read_adv as tv
 from mhkit.tests.dolfyn.base import (
@@ -9,8 +9,8 @@ from mhkit.tests.dolfyn.base import (
     assert_allclose,
 )
 from mhkit.dolfyn.adv import api
+from mhkit.dolfyn.adv.motion import correct_motion
 from mhkit.dolfyn.io.api import read_example as read
-import unittest
 
 make_data = False
 

@@ -1,11 +1,11 @@
-import warnings
 import numpy as np
 import xarray as xr
-from .binned import TimeBinner
-from .time import dt642epoch, dt642date
+
 from .rotate.api import rotate2, set_declination, set_inst2head_rotmat
 from .io.api import save
-from .tools import slice1d_along_axis, convert_degrees
+from ..utils.binning_tools.binner import Binner
+from ..utils.binning_tools.tools import convert_degrees
+from ..utils.time_utils import dt64_to_epoch, dt64_to_date
 
 
 @xr.register_dataset_accessor("velds")  # 'vel dataset'
@@ -175,12 +175,12 @@ class Velocity:
     ):
         time_string = "{:.2f} {} (started: {})"
         time = "time" if "time" in self else "time_avg"
-        if time not in self or dt642epoch(self[time][0]) < 1:
+        if time not in self or dt64_to_epoch(self[time][0]) < 1:
             time_string = "-->No Time Information!<--"
         else:
             tm = self[time][[0, -1]].values
-            dt = dt642date(tm[0])[0]
-            delta = (dt642epoch(tm[-1]) - dt642epoch(tm[0])) / (3600 * 24)  # days
+            dt = dt64_to_date(tm[0])[0]
+            delta = (dt64_to_epoch(tm[-1]) - dt64_to_epoch(tm[0])) / (3600 * 24)  # days
             if delta > 1:
                 units = "days"
             elif delta * 24 > 1:
@@ -533,7 +533,7 @@ class Velocity:
         return self.ds["tke_vec"].sel(tke="wpwp_").drop_vars("tke")
 
 
-class VelBinner(TimeBinner):
+class VelBinner(Binner):
     """
     This is the base binning (averaging) tool.
     All DOLfYN binning tools derive from this base class.
@@ -600,226 +600,6 @@ class VelBinner(TimeBinner):
             "coverage_content_type": "coordinate",
         },
     )
-
-    def bin_average(self, raw_ds, out_ds=None, names=None):
-        """
-        Bin the dataset and calculate the ensemble averages of each
-        variable.
-
-        Parameters
-        ----------
-        raw_ds : xarray.Dataset
-          The raw data structure to be binned
-        out_ds : xarray.Dataset
-          The binned (output) data object to which averaged data is added.
-        names : list of strings
-          The names of variables to be averaged.  If `names` is None,
-          all data in `raw_ds` will be binned.
-
-        Returns
-        -------
-        out_ds : xarray.Dataset
-          The new (or updated when `out_ds` is not None) dataset
-          with the averages of all the variables in `raw_ds`.
-
-        Raises
-        ------
-        AttributeError : when `out_ds` is supplied as input (not None)
-        and the values in ``out_ds.attrs`` are inconsistent with
-        ``raw_ds.attrs`` or the properties of this VelBinner (`n_bin`,
-        `n_fft`, `fs`, etc.)
-
-        Notes
-        -----
-        ``raw_ds.attrs`` are copied to ``out_ds.attrs``. Inconsistencies
-        between the two (when `out_ds` is specified as input) raise an
-        AttributeError.
-        """
-
-        out_ds = self._check_ds(raw_ds, out_ds)
-
-        if names is None:
-            names = raw_ds.data_vars
-
-        for ky in names:
-            # set up dimensions and coordinates for Dataset
-            dims_list = raw_ds[ky].dims
-            if any([ar for ar in dims_list if "altraw" in ar]):
-                continue
-            coords_dict = {}
-            for nm in dims_list:
-                if "time" in nm:
-                    coords_dict[nm] = self.mean(raw_ds[ky][nm].values)
-                else:
-                    coords_dict[nm] = raw_ds[ky][nm].values
-
-            # create Dataset
-            if "ensemble" not in ky:
-                try:  # variables with time coordinate
-                    out_ds[ky] = xr.DataArray(
-                        self.mean(raw_ds[ky].values),
-                        coords=coords_dict,
-                        dims=dims_list,
-                        attrs=raw_ds[ky].attrs,
-                    ).astype("float32")
-                except:  # variables not needing averaging
-                    pass
-
-        # Add standard deviation
-        std = self.standard_deviation(raw_ds.velds.U_mag.values)
-        out_ds["U_std"] = xr.DataArray(
-            std.astype("float32"),
-            dims=raw_ds.velds.U_mag.dims,
-            attrs={
-                "units": "m s-1",
-                "long_name": "Water Velocity Standard Deviation",
-            },
-        )
-
-        return out_ds
-
-    def bin_variance(self, raw_ds, out_ds=None, names=None, suffix="_var"):
-        """
-        Bin the dataset and calculate the ensemble variances of each
-        variable. Complementary to :func:`bin_average <mhkit.dolfyn.velocity.VelBinner.bin_average>`.
-
-        Parameters
-        ----------
-        raw_ds : xarray.Dataset
-          The raw data structure to be binned.
-        out_ds : xarray.Dataset
-          The binned (output) dataset to which variance data is added,
-          nominally the dataset output from
-          :func:`bin_average <mhkit.dolfyn.velocity.VelBinner.bin_average>`.
-        names : list of strings
-          The names of variables of which to calculate variance. If
-          `names` is None, all data in `raw_ds` will be binned.
-
-        Returns
-        -------
-        out_ds : xarray.Dataset
-          The new (or updated when `out_ds` is not None) dataset
-          with the variance of all the variables in `raw_ds`.
-
-        Raises
-        ------
-        AttributeError : when `out_ds` is supplied as input (not None)
-        and the values in ``out_ds.attrs`` are inconsistent with
-        ``raw_ds.attrs`` or the properties of this VelBinner (`n_bin`,
-        `n_fft`, `fs`, etc.)
-
-        Notes
-        -----
-        ``raw_ds.attrs`` are copied to ``out_ds.attrs``. Inconsistencies
-        between the two (when `out_ds` is specified as input) raise an
-        AttributeError.
-        """
-
-        out_ds = self._check_ds(raw_ds, out_ds)
-
-        if names is None:
-            names = raw_ds.data_vars
-
-        for ky in names:
-            # set up dimensions and coordinates for dataarray
-            dims_list = raw_ds[ky].dims
-            if any([ar for ar in dims_list if "altraw" in ar]):
-                continue
-            coords_dict = {}
-            for nm in dims_list:
-                if "time" in nm:
-                    coords_dict[nm] = self.mean(raw_ds[ky][nm].values)
-                else:
-                    coords_dict[nm] = raw_ds[ky][nm].values
-
-            # create Dataset
-            if "ensemble" not in ky:
-                try:  # variables with time coordinate
-                    out_ds[ky + suffix] = xr.DataArray(
-                        self.variance(raw_ds[ky].values),
-                        coords=coords_dict,
-                        dims=dims_list,
-                        attrs=raw_ds[ky].attrs,
-                    ).astype("float32")
-                except:  # variables not needing averaging
-                    pass
-
-        return out_ds
-
-    def autocovariance(self, veldat, n_bin=None):
-        """
-        Calculate the auto-covariance of the raw-signal `veldat`
-
-        Parameters
-        ----------
-        veldat : xarray.DataArray
-          The raw dataArray of which to calculate auto-covariance
-        n_bin : float
-          Number of data elements to use
-
-        Returns
-        -------
-        da : xarray.DataArray
-          The auto-covariance of veldat
-
-        Notes
-        -----
-        As opposed to cross-covariance, which returns the full
-        cross-covariance between two arrays, this function only
-        returns a quarter of the full auto-covariance. It computes the
-        auto-covariance over half of the range, then averages the two
-        sides (to return a 'quartered' covariance).
-
-        This has the advantage that the 0 index is actually zero-lag.
-        """
-
-        indat = veldat.values
-
-        n_bin = self._parse_nbin(n_bin)
-        out = np.empty(
-            self._outshape(indat.shape, n_bin=n_bin)[:-1] + [int(n_bin // 4)],
-            dtype=indat.dtype,
-        )
-        # Need to pad velocity timeseries with zeros to incoporate the full range of
-        # the auto-covariance.
-        n_pad = int(n_bin / 2 - 2)
-        npd0 = n_pad // 2
-        npd1 = (n_pad + 1) // 2
-        # Pad with zeros at boundaries to replicate the original n_pad behavior
-        indat_padded = np.pad(
-            indat, pad_width=[(0, 0)] * (indat.ndim - 1) + [(npd0, npd1)]
-        )
-        dt1 = self.reshape(indat_padded, step=int(n_bin), n_bin=int(n_bin + n_pad))
-        # Here we de-mean only on the 'valid' range:
-        dt1 = dt1 - dt1[..., :, int(n_bin // 4) : int(-n_bin // 4)].mean(-1)[..., None]
-        dt2 = self.demean(indat)
-        se = slice(int(n_bin // 4) - 1, None, 1)
-        sb = slice(int(n_bin // 4) - 1, None, -1)
-        for slc in slice1d_along_axis(dt1.shape, -1):
-            tmp = np.correlate(dt1[slc], dt2[slc], "valid")
-            # The zero-padding in reshape means we compute coherence
-            # from one-sided time-series for first and last points.
-            if slc[-2] == 0:
-                out[slc] = tmp[se]
-            elif slc[-2] == dt2.shape[-2] - 1:
-                out[slc] = tmp[sb]
-            else:
-                # For the others we take the average of the two sides.
-                out[slc] = (tmp[se] + tmp[sb]) / 2
-
-        dims_list, coords_dict = self._new_coords(veldat)
-        # tack on new coordinate
-        dims_list.append("lag")
-        coords_dict["lag"] = np.arange(n_bin // 4)
-
-        da = xr.DataArray(
-            out.astype("float32"),
-            coords=coords_dict,
-            dims=dims_list,
-        )
-        da["lag"].attrs["units"] = "timestep"
-
-        return da
 
     def _interp_noise(self, noise, time):
         """Return noise as a numpy array, interpolating to binned `time` if needed."""
@@ -972,154 +752,5 @@ class VelBinner(TimeBinner):
                 "units": "m2 s-2",
                 "long_name": "TKE Vector",
                 "standard_name": "specific_turbulent_kinetic_energy_of_sea_water",
-            },
-        )
-
-    def power_spectral_density(
-        self,
-        veldat,
-        freq_units="rad/s",
-        fs=None,
-        window="hann",
-        noise=0,
-        n_bin=None,
-        n_fft=None,
-        pct_overlap=0,
-    ):
-        """
-        Calculate the power spectral density of velocity.
-
-        Parameters
-        ----------
-        veldat : xr.DataArray (dir, time)
-          The raw velocity data
-        freq_units : string
-          Frequency units of the returned spectra in either Hz or rad/s
-        fs : float (optional)
-          The sample rate. Default is `binner.fs`
-        window: str
-          Type of window to apply to each FFT segment.
-          Example options: 'boxcar', 'hann', 'hamming', 'blackman', 'bartlett'.
-          See `scipy.signal.window` for more options.
-          Default: 'hann'.
-        noise : numeric or array
-          Instrument noise level in same units as velocity.
-          Default = 0 (ADCP) or [0, 0, 0] (ADV)
-        n_bin : int (optional)
-          The bin-size. Default = `self.n_bin`
-        n_fft : int (optional)
-          The fft size. Default = `self.n_fft`
-        pct_overlap : float (optional)
-          Fractional overlap between consecutive sliding windows, in [0, 1).
-          Controls both the bin-to-bin advance and the within-bin FFT overlap
-          passed to scipy.signal.welch. Industry standard is 50%.
-          Default = 0 (0% overlap).
-
-        Returns
-        -------
-        psd : xarray.DataArray (dir, time, freq)
-          The spectra in the 'u', 'v', and 'w' directions.
-        """
-
-        fs_in = self._parse_fs(fs)
-        n_fft = self._parse_nfft(n_fft)
-        if "xarray" in type(veldat).__module__:
-            vel = veldat.values
-        if ("rad" not in freq_units) and ("Hz" not in freq_units):
-            raise ValueError("`freq_units` should be one of 'Hz' or 'rad/s'")
-        if (pct_overlap < 0) or (pct_overlap > 1):
-            raise ValueError(
-                f"pct_overlap must be between 0 and 1, received {pct_overlap}."
-            )
-        n_bin = self._parse_nbin(n_bin)
-        step = int((1 - pct_overlap) * n_bin)
-
-        # Set units correctly
-        if "rad" in freq_units:
-            fs = 2 * np.pi * fs_in
-            freq_units = "rad s-1"
-            units = "m2 s-1 rad-1"
-        else:
-            fs = fs_in
-            freq_units = "Hz"
-            units = "m2 s-2 Hz-1"
-
-        # Spectra, if velocity is a 2D array (dir, time)
-        if len(vel.shape) >= 2:
-            if vel.shape[0] != 3:
-                raise ValueError(
-                    "Function can only handle 1D or 3D arrays."
-                    " If ADCP data, please select a specific depth bin."
-                )
-            if np.array(noise).any():
-                if np.size(noise) != 3:
-                    raise ValueError("Noise is expected to be an array of 3 scalars")
-            else:
-                # Reset default to list of 3 zeros
-                noise = np.array([0, 0, 0])
-            # Set up input velocity array, coordinates, and dimensions
-            vel_in = vel[:3]
-            coords = {"S": self.S}
-            dims = ["S"]
-
-        # Spectra, if velocity is a single array
-        else:
-            if np.array(noise).any() and np.size(noise) > 1:
-                raise ValueError("Noise is expected to be a scalar")
-            # Add dummy axis
-            vel_in = vel[np.newaxis]
-            noise = np.atleast_1d(noise)
-            coords = {}
-            dims = []
-
-        # Do power spectral density calculation for each velocity component
-        out = np.empty(
-            self._outshape_fft(vel_in.shape, n_fft=n_fft, n_bin=n_bin, step=step)
-        )
-        for idx in range(vel_in.shape[0]):
-            f, out[idx] = self._psd_base(
-                vel_in[idx],
-                fs=fs,
-                noise=noise[idx],
-                window=window,
-                n_bin=n_bin,
-                n_fft=n_fft,
-                pct_overlap=pct_overlap,
-            )
-        # If not 3D (ADV) data, remove the new axis
-        if "S" not in dims:
-            out = out[0]
-
-        # Create frequency vector, also checks whether using f or omega
-        freq = xr.DataArray(
-            f,
-            dims=["freq"],
-            name="freq",
-            attrs={
-                "units": freq_units,
-                "long_name": "FFT Frequency Vector",
-                "coverage_content_type": "coordinate",
-            },
-        )
-
-        # Update coordinates and dimensions
-        time = veldat[veldat.dims[-1]].values
-        time_coord = self.mean(time, step=step, n_bin=n_bin)
-        coords.update(
-            {
-                "time_psd": time_coord,
-                "freq": freq,
-            }
-        )
-        dims += ["time_psd", "freq"]
-
-        return xr.DataArray(
-            out,
-            coords=coords,
-            dims=dims,
-            attrs={
-                "units": units,
-                "n_fft": n_fft,
-                "long_name": "Power Spectral Density",
             },
         )

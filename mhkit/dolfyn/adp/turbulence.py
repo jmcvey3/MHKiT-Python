@@ -926,7 +926,7 @@ class ADPBinner(VelBinner):
         else:
             noise = np.array(0)
 
-        # Noise subtraction from binner.TimeBinner._psd_base
+        # Noise subtraction from binner.Binner._psd_base
         psd = psd.copy()
         if noise is not None:
             psd -= noise**2 / (self.fs / 2)

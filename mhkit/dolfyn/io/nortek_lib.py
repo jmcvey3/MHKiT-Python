@@ -1,8 +1,8 @@
 from struct import unpack
-import numpy as np
 from datetime import datetime
+import numpy as np
 
-from .. import time
+from ...utils import time_utils as time
 
 
 def _bcd2char(cBCD):
@@ -135,10 +135,16 @@ def rd_time(strng):
     second from the byte string, then converts to an epoch time.
     """
 
+    def _fullyear(year):
+        if year > 100:
+            return year
+        year += 1900 + 100 * (year < 90)
+        return year
+
     min, sec, day, hour, year, month = unpack("BBBBBB", strng[:6])
-    return time.date2epoch(
+    return time.date_to_epoch(
         datetime(
-            time._fullyear(_bcd2char(year)),
+            _fullyear(_bcd2char(year)),
             _bcd2char(month),
             _bcd2char(day),
             _bcd2char(hour),

@@ -1,14 +1,15 @@
+import os
+import warnings
+import unittest
+import pytest
+import numpy as np
+from unittest.mock import patch
+
 from mhkit.tests.dolfyn.base import assert_allclose
 from mhkit.tests.dolfyn import base as tb
 import mhkit.dolfyn.io.nortek2 as sig
 from mhkit.dolfyn.io.nortek2_lib import crop_ensembles
 from mhkit.dolfyn.io.api import read_example as read
-import warnings
-import unittest
-import pytest
-import os
-import numpy as np
-from unittest.mock import patch
 
 make_data = False
 load = tb.load_netcdf
