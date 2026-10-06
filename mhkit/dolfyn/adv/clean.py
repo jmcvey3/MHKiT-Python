@@ -113,7 +113,7 @@ def _interp_nan(da, npt, method, maxgap):
     return da
 
 
-def fill_nan_ensemble_mean(u, mask, fs, window):
+def fill_nan_ensemble_mean(u, mask, fs, window, step=None):
     """
     Fill missing values with the ensemble mean.
 
@@ -128,6 +128,10 @@ def fill_nan_ensemble_mean(u, mask, fs, window):
       Instrument sampling frequency
     window : int
       Size of window in seconds used to calculate ensemble means
+    step : int
+      Number of samples to advance between consecutive ensembles.
+      Default: `window * fs` (non-overlapping ensembles).
+      For a 50% overlap, step = (1 - 50%) * window.
 
     Returns
     -------
@@ -141,6 +145,8 @@ def fill_nan_ensemble_mean(u, mask, fs, window):
 
     u = u.where(~mask)
     bnr = VelBinner(n_bin=window * fs, fs=fs)
+    if step is None:
+        step = bnr.n_bin
 
     if len(u.shape) == 1:
         var = u.values[None, :]
@@ -148,14 +154,15 @@ def fill_nan_ensemble_mean(u, mask, fs, window):
         var = u.values
 
     vel = np.empty(var.shape)
-    vel_reshaped = bnr.reshape(var)
+    vel_reshaped = bnr.reshape(var, step=step)
     vel_mean = np.nanmean(vel_reshaped, axis=-1)
 
     # If there are extra datapoints trimmed off after the last ensemble,
     # take them into account by filling in another ensemble with means
-    diff = vel.shape[-1] - vel_reshaped.size // vel.shape[0]
+    n_used = (vel_reshaped.shape[-2] - 1) * step + bnr.n_bin
+    diff = vel.shape[-1] - n_used
     # diff = number of extra points
-    extra_nans = vel_reshaped.shape[-1] - diff
+    extra_nans = bnr.n_bin - diff
     if diff:
         vel = np.empty((var.shape[0], var.shape[-1] + extra_nans))
         extra = var[:, -diff:]
@@ -173,9 +180,12 @@ def fill_nan_ensemble_mean(u, mask, fs, window):
     vel_filled = np.where(
         np.isnan(vel_reshaped), vel_mask, vel_reshaped + np.nan_to_num(vel_mask)
     )
-    # "Unshape" the data
+    # "Unshape" the data. Overlapping ensembles (step < n_bin) means
+    # later windows overwrite earlier ones for the samples they share.
     for i in range(var.shape[0]):
-        vel[i] = np.ravel(vel_filled[i], "C")
+        for j in range(vel_filled.shape[1]):
+            start = j * step
+            vel[i, start : start + bnr.n_bin] = vel_filled[i, j]
 
     if diff:  # Trim off the extra means
         u.values = np.squeeze(vel[:, :-extra_nans])

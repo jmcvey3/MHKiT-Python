@@ -554,53 +554,6 @@ class VelBinner(Binner):
         avg = binner.bin_average(rawdat)
     """
 
-    # This defines how cross-spectra and stresses are computed.
-    _cross_pairs = [(0, 1), (0, 2), (1, 2)]
-
-    tke = xr.DataArray(
-        ["upup_", "vpvp_", "wpwp_"],
-        dims=["tke"],
-        name="tke",
-        attrs={
-            "units": "1",
-            "long_name": "Turbulent Kinetic Energy Vector Components",
-            "coverage_content_type": "coordinate",
-        },
-    )
-
-    tau = xr.DataArray(
-        ["upvp_", "upwp_", "vpwp_"],
-        dims=["tau"],
-        name="tau",
-        attrs={
-            "units": "1",
-            "long_name": "Reynolds Stress Vector Components",
-            "coverage_content_type": "coordinate",
-        },
-    )
-
-    S = xr.DataArray(
-        ["Sxx", "Syy", "Szz"],
-        dims=["S"],
-        name="S",
-        attrs={
-            "units": "1",
-            "long_name": "Power Spectral Density Vector Components",
-            "coverage_content_type": "coordinate",
-        },
-    )
-
-    C = xr.DataArray(
-        ["Cxy", "Cxz", "Cyz"],
-        dims=["C"],
-        name="C",
-        attrs={
-            "units": "1",
-            "long_name": "Cross-Spectral Density Vector Components",
-            "coverage_content_type": "coordinate",
-        },
-    )
-
     def _interp_noise(self, noise, time):
         """Return noise as a numpy array, interpolating to binned `time` if needed."""
         noise_time_dim = noise.dims[-1]
@@ -708,6 +661,17 @@ class VelBinner(Binner):
                 "velocity from an ADV or a single ADCP beam."
             )
 
+        tke = xr.DataArray(
+            ["upup_", "vpvp_", "wpwp_"],
+            dims=["tke"],
+            name="tke",
+            attrs={
+                "units": "1",
+                "long_name": "Turbulent Kinetic Energy Vector Components",
+                "coverage_content_type": "coordinate",
+            },
+        )
+
         # Calc TKE
         if detrend:
             out = np.nanmean(self.detrend(vel) ** 2, axis=-1)
@@ -726,7 +690,7 @@ class VelBinner(Binner):
                 out[2] -= noise[2] ** 2
             # Set coords
             dims = ["tke", "time"]
-            coords = {"tke": self.tke, "time": self.mean(veldat.time.values)}
+            coords = {"tke": tke, "time": self.mean(veldat.time.values)}
         else:
             # Subtract noise
             if noise is not None:

@@ -48,6 +48,8 @@ class Binner:
                 "n_fft_coh must be smaller than or equal to n_bin, "
                 "setting n_fft_coh = n_bin"
             )
+        # This defines how cross-spectra and stresses are computed.
+        self._cross_pairs = [(0, 1), (0, 2), (1, 2)]
 
     def _outshape(self, inshape, n_pad=0, n_bin=None):
         """
@@ -799,6 +801,17 @@ class Binner:
             freq_units = "Hz"
             units = "m2 s-2 Hz-1"
 
+        S = xr.DataArray(
+            ["Sxx", "Syy", "Szz"],
+            dims=["S"],
+            name="S",
+            attrs={
+                "units": "1",
+                "long_name": "Power Spectral Density Vector Components",
+                "coverage_content_type": "coordinate",
+            },
+        )
+
         # Spectra, if velocity is a 2D array (dir, time)
         if len(vel.shape) >= 2:
             if vel.shape[0] != 3:
@@ -814,7 +827,7 @@ class Binner:
                 noise = np.array([0, 0, 0])
             # Set up input velocity array, coordinates, and dimensions
             vel_in = vel[:3]
-            coords = {"S": self.S}
+            coords = {"S": S}
             dims = ["S"]
 
         # Spectra, if velocity is a single array
@@ -971,6 +984,7 @@ class Binner:
                 n_fft=n_fft,
                 pct_overlap=pct_overlap,
             )
+
         coh_freq = xr.DataArray(
             f,
             dims=["coh_freq"],
@@ -982,9 +996,20 @@ class Binner:
             },
         )
 
+        C = xr.DataArray(
+            ["Cxy", "Cxz", "Cyz"],
+            dims=["C"],
+            name="C",
+            attrs={
+                "units": "1",
+                "long_name": "Cross-Spectral Density Vector Components",
+                "coverage_content_type": "coordinate",
+            },
+        )
+
         csd = xr.DataArray(
             out.astype("complex64"),
-            coords={"C": self.C, "time_psd": time_coord, "coh_freq": coh_freq},
+            coords={"C": C, "time_psd": time_coord, "coh_freq": coh_freq},
             dims=["C", "time_psd", "coh_freq"],
             attrs={
                 "units": units,

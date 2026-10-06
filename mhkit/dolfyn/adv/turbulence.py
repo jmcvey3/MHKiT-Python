@@ -83,8 +83,19 @@ class ADVBinner(VelBinner):
             dims=veldat.dims,
             attrs={"units": "m2 s-2", "long_name": "Specific Reynolds Stress Vector"},
         )
+
+        tau = xr.DataArray(
+            ["upvp_", "upwp_", "vpwp_"],
+            dims=["tau"],
+            name="tau",
+            attrs={
+                "units": "1",
+                "long_name": "Reynolds Stress Vector Components",
+                "coverage_content_type": "coordinate",
+            },
+        )
         da = da.rename({"dir": "tau"})
-        da = da.assign_coords({"tau": self.tau, "time": time})
+        da = da.assign_coords({"tau": tau, "time": time})
 
         return da
 
