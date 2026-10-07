@@ -59,7 +59,7 @@ import warnings
 import numpy as np
 import xarray as xr
 
-from mhkit.utils.binning_tools.binner import Binner
+from mhkit.utils import Binner
 
 
 def _check_numeric(value, name: str):

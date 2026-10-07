@@ -21,6 +21,7 @@ from .type_handling import (
     convert_to_dataarray,
     convert_nested_dict_and_pandas,
 )
+from .binning_tools.binner import Binner
 
 # pylint: disable=invalid-name
 _matlab = False  # Private variable indicating if mhkit is run through matlab
