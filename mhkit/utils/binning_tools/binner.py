@@ -11,7 +11,8 @@ warnings.simplefilter("ignore", RuntimeWarning)
 class Binner:
     def __init__(self, n_bin, fs, n_fft=None, n_fft_coh=None, noise=[0, 0, 0]):
         """
-        Initialize a binning object.
+        Initialize a binning object. This is the base binning (averaging
+        and spectral analysis) tool.
 
         Parameters
         ----------
@@ -415,7 +416,8 @@ class Binner:
     def bin_variance(self, raw_ds, out_ds=None, names=None, suffix="_var"):
         """
         Bin the dataset and calculate the ensemble variances of each
-        variable. Complementary to :func:`bin_average <mhkit.dolfyn.velocity.VelBinner.bin_average>`.
+        variable. Complementary to
+        :func:`bin_average <mhkit.dolfyn.velocity.VelBinner.bin_average>`.
 
         Parameters
         ----------

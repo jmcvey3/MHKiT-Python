@@ -170,11 +170,13 @@ class analysis_testcase(unittest.TestCase):
             tdat["psd"],
             tdat["U_mag"].isel(range=len(dat["range"]) // 2),
             freq_range=[0.2, 0.4],
+            k_constant=0.67,
         )
         tdat["dissipation_rate_LT83_noise"] = bnr.dissipation_rate_LT83(
             tdat["psd"],
             tdat["U_mag"].isel(range=len(dat["range"]) // 2),
             freq_range=[0.2, 0.4],
+            k_constant=0.67,
             noise=tdat["noise"],
         )
         (

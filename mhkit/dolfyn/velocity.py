@@ -534,25 +534,135 @@ class Velocity:
 
 
 class VelBinner(Binner):
-    """
-    This is the base binning (averaging) tool.
-    All DOLfYN binning tools derive from this base class.
+    def __init__(
+        self,
+        n_bin,
+        fs,
+        n_fft=None,
+        n_fft_coh=None,
+        noise=None,
+    ):
+        """
+        This is the base binning (averaging) tool.
+        All DOLfYN binning tools derive from this base class.
 
-    Examples
-    ========
-    The VelBinner class is used to compute averages and turbulence
-    statistics from 'raw' (not averaged) ADV or ADP measurements, for
-    example::
+        Parameters
+        ----------
+        n_bin : int
+          Number of data points to include in a 'bin' (ensemble), not the
+          number of bins
+        fs : int
+          Instrument sampling frequency in Hz
+        n_fft : int
+          Number of data points to use for fft (`n_fft`<=`n_bin`).
+          Default: `n_fft`=`n_bin`
+        n_fft_coh : int
+          Number of data points to use for coherence and cross-spectra ffts
+          Default: `n_fft_coh`=`n_fft`
+        noise : list or ndarray
+          Instrument's doppler noise in same units as velocity
 
-        # First read or load some data.
-        rawdat = dolfyn.read_example('BenchFile01.ad2cp')
+        Examples
+        --------
+        The VelBinner class is used to compute averages and turbulence
+        statistics from 'raw' (not averaged) ADV or ADP measurements, for
+        example::
 
-        # Now initialize the averaging tool:
-        binner = dolfyn.VelBinner(n_bin=600, fs=rawdat.fs)
+            # First read or load some data.
+            rawdat = dolfyn.read_example('BenchFile01.ad2cp')
 
-        # This computes the basic averages
-        avg = binner.bin_average(rawdat)
-    """
+            # Now initialize the averaging tool:
+            binner = dolfyn.VelBinner(n_bin=600, fs=rawdat.fs)
+
+            # This computes the basic averages
+            avg = binner.bin_average(rawdat)
+        """
+
+        Binner.__init__(self, n_bin, fs, n_fft, n_fft_coh, noise)
+
+    def doppler_noise_level(self, psd, pct_fN=0.8):
+        """
+        Estimate bias due to Doppler noise using the noise floor
+        of the velocity spectra.
+
+        Parameters
+        ----------
+        psd : xarray.DataArray ([dir,] time, freq)
+          The power spectral density of velocity (auto-spectra) from an ADV
+          or from a single depth bin (range) of an ADCP.
+        pct_fN : float
+          Percent of Nyquist frequency to calculate characeristic frequency.
+          Default = 0.8 (80%)
+
+        Returns
+        -------
+        doppler_noise (xarray.DataArray):
+          Doppler noise level in units of m/s
+
+        Notes
+        -----
+        Approximates bias from
+
+        .. math:: \\sigma^{2}_{noise} = N * f_{c}
+
+        where :math:`\\sigma_{noise}` is the bias due to Doppler noise,
+        :math:`N` is the constant variance or spectral density, and :math:`f_{c}`
+        is the characteristic frequency.
+
+        The characteristic frequency is then found as
+
+        .. math:: f_{c} = pct_fN * (f_{s}/2)
+
+        where :math:`f_{s}/2` is the Nyquist frequency.
+
+
+        Richard, Jean-Baptiste, et al. "Method for identification of Doppler noise
+        levels in turbulent flow measurements dedicated to tidal energy." International
+        Journal of Marine Energy 3 (2013): 52-64.
+
+        Thiébaut, Maxime, et al. "Investigating the flow dynamics and turbulence at a
+        tidal-stream energy site in a highly energetic estuary." Renewable Energy 195
+        (2022): 252-262.
+        """
+
+        if not isinstance(psd, xr.DataArray):
+            raise TypeError("`psd` must be an instance of `xarray.DataArray`.")
+        if not isinstance(pct_fN, float) or not 0 <= pct_fN <= 1:
+            raise ValueError("`pct_fN` must be a float within the range [0, 1].")
+        array_size = len(psd.shape)
+        if array_size >= 3:
+            if (psd.shape[0] != 3) or (array_size > 3):
+                raise Exception("PSD should be 2-dimensional (time, frequency)")
+
+        # Characteristic frequency set to 80% of Nyquist frequency
+        fN = self.fs / 2
+        fc = pct_fN * fN
+
+        # Get units right
+        if psd.freq.units == "Hz":
+            f_range = slice(fc, fN)
+        else:
+            f_range = slice(2 * np.pi * fc, 2 * np.pi * fN)
+
+        # Noise floor
+        N2 = psd.sel(freq=f_range) * psd.freq.sel(freq=f_range)
+        noise_level = np.sqrt(N2.mean(dim="freq"))
+
+        time_dim = psd.dims[-2]
+        if array_size == 2:
+            coords = {time_dim: psd[time_dim]}
+        elif array_size == 3:
+            coords = {"S": psd["S"], time_dim: psd[time_dim]}
+
+        return xr.DataArray(
+            noise_level.values,
+            coords=coords,
+            attrs={
+                "units": "m/s",
+                "long_name": "Doppler Noise Level",
+                "description": "Doppler noise level calculated from PSD white noise",
+            },
+        )
 
     def _interp_noise(self, noise, time):
         """Return noise as a numpy array, interpolating to binned `time` if needed."""
@@ -632,10 +742,8 @@ class VelBinner(Binner):
           The last dimension is assumed to be time.
         noise : float or array-like
           Instrument noise level in same units as velocity. Typically
-          found from the ADV's
-          :func:`doppler_noise_level <mhkit.dolfyn.adv.turbulence.ADVBinner.doppler_noise_level>`.
-          or ADCP's
-          :func:`doppler_noise_level <mhkit.dolfyn.adp.turbulence.ADPBinner.doppler_noise_level>`.
+          found from
+          :func:`doppler_noise_level <mhkit.dolfyn.VelBinner.doppler_noise_level>`.
           Default = None
         detrend : bool
           Detrend the velocity data (True), or simply de-mean it (False),
@@ -716,5 +824,214 @@ class VelBinner(Binner):
                 "units": "m2 s-2",
                 "long_name": "TKE Vector",
                 "standard_name": "specific_turbulent_kinetic_energy_of_sea_water",
+            },
+        )
+
+    def check_turbulence_cascade_slope(self, psd, freq_range=[6.28, 12.57]):
+        """
+        This function calculates the slope of the PSD, the power spectra
+        of velocity, within the given frequency range. The purpose of this
+        function is to check that the region of the PSD containing the
+        isotropic turbulence cascade decreases at a rate of :math:`f^{-5/3}`.
+
+        Parameters
+        ----------
+        psd : xarray.DataArray ([time,] freq)
+          The power spectral density (1D or 2D)
+        freq_range : iterable(2)
+          The range over which the isotropic turbulence cascade occurs, in
+          units of the psd frequency vector (Hz or rad/s).
+          Default = [6.28, 12.57] rad/s
+
+        Returns
+        -------
+        (m, b): tuple (slope, y-intercept)
+          A tuple containing the coefficients of the log-adjusted linear
+          regression between PSD and frequency
+
+        Notes
+        -----
+        Calculates slope based on the `standard` formula for dissipation:
+
+        .. math:: S(k) = \\alpha \\epsilon^{2/3} k^{-5/3} + N
+
+        The slope of the isotropic turbulence cascade, which should be
+        equal to :math:`k^{-5/3}` or :math:`f^{-5/3}`, where k and f are
+        the wavenumber and frequency vectors, is estimated using linear
+        regression with a log transformation:
+
+        .. math:: log10(y) = m*log10(x) + b
+
+        Which is equivalent to
+
+        .. math:: y = 10^{b} x^{m}
+
+        Where :math:`y` is S(k) or S(f), :math:`x` is k or f, :math:`m`
+        is the slope (ideally -5/3), and :math:`10^{b}` is the intercept of
+        :math:`y` at :math:`x^{m}=1'.
+        """
+
+        if not isinstance(psd, xr.DataArray):
+            raise TypeError("`psd` must be an instance of `xarray.DataArray`.")
+        if not hasattr(freq_range, "__iter__") or len(freq_range) != 2:
+            raise ValueError("`freq_range` must be an iterable of length 2.")
+
+        idx = np.where((freq_range[0] < psd.freq) & (psd.freq < freq_range[1]))
+        idx = idx[0]
+
+        x = np.log10(psd["freq"].isel(freq=idx))
+        y = np.log10(psd.isel(freq=idx))
+
+        y_bar = y.mean("freq")
+        x_bar = x.mean("freq")
+
+        # using the formula to calculate the slope and intercept
+        n = np.sum((x - x_bar) * (y - y_bar), axis=0)
+        d = np.sum((x - x_bar) ** 2, axis=0)
+
+        m = n / d
+        b = y_bar - m * x_bar
+
+        return m, b
+
+    def dissipation_rate_LT83(
+        self,
+        psd,
+        U_mag,
+        freq_range=[6.28, 12.57],
+        k_constant=[0.5, 0.67, 0.67],
+        noise=None,
+    ):
+        """
+        Calculate the dissipation rate from the power spectral density of velocity.
+
+        Parameters
+        ----------
+        psd : xarray.DataArray ([dir,] time, freq)
+          The power spectral density. For an ADCP, this should be a single depth bin
+          (range) from the vertical beam.
+        U_mag : xarray.DataArray (time)
+          The bin-averaged horizontal velocity (speed) [m/s]. For an ADCP, this should
+           be from a single depth bin. U_mag can be computed using
+          :func:`U_mag <mhkit.dolfyn.velocity.Velocity.U_mag>`
+        freq_range : iterable(2)
+          The range over which to integrate/average the spectrum, in units
+          of the psd frequency vector (Hz or rad/s).
+          Default = [6.28, 12.57] rad/s
+        k_constant : float or iterable(3)
+          Kolmogorov Constant (\\alpha in Notes section below) to use. If a
+          three dimensional PSD is provided, \\alpha defaults to [0.5, 0.67, 0.67];
+          i.e. 0.5 for the streamwise PSD and 0.67 for the transverse and vertical
+          PSDs. If the PSD is provided for a single velocity direction, \\alpha is
+          taken to be 0.5 unless otherwise specified.
+        noise : float or array-like
+          Instrument noise level in same units as velocity. Can be computed from the
+          power spectral density and
+          :func:`doppler_noise_level <mhkit.dolfyn.VelBinner.doppler_noise_level>`
+          Default: None.
+
+        Returns
+        -------
+        epsilon : xarray.DataArray ([dir,] time)
+          dataArray of the dissipation rate
+
+        Notes
+        -----
+        This uses the `standard` formula for dissipation:
+
+        .. math:: S(k) = \\alpha \\epsilon^{2/3} k^{-5/3} + N
+
+        where :math:`\\alpha is the Kolmogorov constant, `k` is wavenumber,
+        `S(k)` is the turbulent kinetic energy spectrum, and `N' is the
+        doppler noise level associated with the TKE spectrum.
+
+        With :math:`k \\rightarrow \\omega / U`, then -- to preserve variance --
+        :math:`S(k) = U S(\\omega)`, and so this becomes:
+
+        .. math:: S(\\omega) = \\alpha \\epsilon^{2/3} \\omega^{-5/3} U^{2/3} + N
+
+        With :math:`k \\rightarrow (2\\pi f) / U`, then
+
+        .. math:: S(\\omega) = \\alpha \\epsilon^{2/3} f^{-5/3} (U/(2*\\pi))^{2/3} + N
+
+        LT83 : Lumley and Terray, "Kinematics of turbulence convected
+        by a random wave field". JPO, 1983, vol13, pp2000-2007.
+        """
+
+        if not isinstance(psd, xr.DataArray):
+            raise TypeError("`psd` must be an instance of `xarray.DataArray`.")
+        if len(U_mag.shape) != 1:
+            raise Exception("U_mag should be 1-dimensional (time).")
+        if not hasattr(freq_range, "__iter__") or len(freq_range) != 2:
+            raise ValueError("`freq_range` must be an iterable of length 2.")
+
+        array_size = len(psd.shape)
+        if array_size >= 3:
+            if (psd.shape[0] != 3) or (array_size > 3):
+                raise Exception("PSD should be 2-dimensional (time, frequency)")
+
+        # if the spectra are 1D, then the first dimension should be time (any length)
+        if (psd.shape[0] != 3) and (np.size(k_constant) != 1):
+            raise ValueError(
+                "`k_constant` should be a single value. If using streamwise "
+                "velocity, set to 0.5. Otherwise set to 0.67."
+            )
+        elif (psd.shape[0] == 3) and (np.size(k_constant) != 3):
+            raise ValueError("`k_constant` should be an iterable of length 3.")
+
+        if noise is not None:
+            if np.shape(noise)[0] != np.shape(psd)[0]:
+                raise Exception("Noise should have same first dimension as `psd`.")
+        else:
+            if array_size == 3:  # ADV
+                noise = np.array([0, 0, 0])[:, None, None]
+            else:  # ADCP
+                noise = np.array(0)
+
+        # Noise subtraction
+        psd = psd.copy()
+        if noise is not None:
+            psd -= noise**2 / (self.fs / 2)
+            psd = psd.where(psd > 0, np.min(np.abs(psd)) / 100)
+
+        freq = psd.freq
+        idx = np.where((freq_range[0] < freq) & (freq < freq_range[1]))
+        idx = idx[0]
+
+        # Interpolate U_mag to the same time dimension as PSD
+        umag_time_dim = U_mag.dims[-1]
+        psd_time_dim = psd.dims[-2]
+        # If overlap is not 0%
+        if psd[psd_time_dim].size != U_mag[umag_time_dim].size:
+            U_mag = U_mag.interp({umag_time_dim: psd[psd_time_dim].values}).values
+        else:
+            U_mag = U_mag.values
+
+        # Set the correct magnitude whether the frequency is in Hz or rad/s
+        if freq.units == "Hz":
+            U = U_mag / (2 * np.pi)
+        else:
+            U = U_mag
+
+        # Set Kolmogorov constant
+        a = np.array(k_constant)
+        if psd.shape[0] == 3:
+            a = a[:, None, None]  # stack properly
+        else:
+            a = np.squeeze(k_constant)
+
+        # Calculate dissipation
+        out = (psd.isel(freq=idx) * freq.isel(freq=idx) ** (5 / 3) / a).mean(
+            axis=-1
+        ) ** (3 / 2) / U
+
+        return xr.DataArray(
+            out,
+            attrs={
+                "units": "m2 s-3",
+                "long_name": "TKE Dissipation Rate",
+                "standard_name": "specific_turbulent_kinetic_energy_dissipation_in_sea_water",
+                "description": "TKE dissipation rate calculated using "
+                "the method from Lumley and Terray, 1983",
             },
         )
