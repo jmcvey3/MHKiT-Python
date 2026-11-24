@@ -204,7 +204,7 @@ class _NortekReader:
             len(nens)
         except TypeError:
             # not a tuple, so we assume None or int
-            self._npings = nens
+            self.n_ens = nens
         else:
             if len(nens) != 2:
                 raise TypeError("nens must be: None (), int, or len 2")
@@ -214,7 +214,7 @@ class _NortekReader:
                 "the entire file, then crop the beginning at "
                 "nens[0]."
             )
-            self._npings = nens[1]
+            self.n_ens = nens[1]
             self._n_start = nens[0]
         if endian is None:
             if unpack("<HH", self.read(4)) == (1445, 24):
@@ -263,8 +263,8 @@ class _NortekReader:
         # This has a large buffer...
         self.f = open(base._abspath(fname), "rb", bufsize)
         self.close = self.f.close
-        if self._npings is not None:
-            self.n_ensembles = self._npings
+        if self.n_ens is not None:
+            self.n_ensembles = self.n_ens
 
         da = self.data["attrs"]
         if (self.config["adv"]["n_burst"] > 0) and ("ADV" in da["inst_type"]):
@@ -479,7 +479,7 @@ class _NortekReader:
                 if retval == 10:
                     self.findnext()
                     retval = None
-                if self._npings is not None and self.c >= self._npings:
+                if self.c >= self.n_ensembles:
                     if "imu" in self._dtypes:
                         try:
                             self.readnext()
