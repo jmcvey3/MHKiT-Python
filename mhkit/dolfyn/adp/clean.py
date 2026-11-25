@@ -270,12 +270,7 @@ def water_depth_from_pressure(ds, salinity=35) -> None:
     pressure = [v for v in ds.data_vars if "pressure" in v]
     if not pressure:
         raise NameError("The variable 'pressure' does not exist.")
-    else:
-        for p in pressure:
-            if not ds[p].sum():
-                pressure.remove(p)
-        if not pressure:
-            raise ValueError("Pressure data not recorded.")
+
     temp = [
         v
         for v in ds.data_vars
